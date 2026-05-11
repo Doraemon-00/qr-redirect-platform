@@ -9,6 +9,7 @@ services:
       REDIS_ADDR: redis:6379
       CLICKHOUSE_ADDR: clickhouse:9000
       CLICKHOUSE_DATABASE: qr_analytics
+      CLICKHOUSE_PASSWORD: qr
       DEMO_API_KEY: qk_demo_local_dev_key
     ports:
       - "8080:8080"
@@ -52,7 +53,7 @@ services:
     environment:
       CLICKHOUSE_DB: qr_analytics
       CLICKHOUSE_USER: default
-      CLICKHOUSE_PASSWORD: ""
+      CLICKHOUSE_PASSWORD: qr
     ports:
       - "8123:8123"
       - "9000:9000"
@@ -60,7 +61,7 @@ services:
       - clickhouse_data:/var/lib/clickhouse
       - ./migrations/clickhouse:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
+      test: ["CMD", "clickhouse-client", "--password", "qr", "--query", "SELECT 1"]
       interval: 5s
       timeout: 3s
       retries: 20

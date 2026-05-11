@@ -57,6 +57,9 @@ func (s *Server) Routes() http.Handler {
 	r.Get("/readyz", s.readyz)
 	r.Handle("/metrics", promhttp.Handler())
 
+	r.Get("/api/qr/{token}/image", s.getQRImage)
+	r.Get("/r/{token}", s.redirect)
+
 	r.Route("/api/qr", func(r chi.Router) {
 		r.Use(s.requireAPIKey)
 		r.Post("/create", s.createQR)
@@ -65,9 +68,6 @@ func (s *Server) Routes() http.Handler {
 		r.Delete("/{token}", s.deleteQR)
 		r.Get("/{token}/analytics", s.getAnalytics)
 	})
-
-	r.Get("/api/qr/{token}/image", s.getQRImage)
-	r.Get("/r/{token}", s.redirect)
 
 	return r
 }
