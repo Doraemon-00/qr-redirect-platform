@@ -1,0 +1,16 @@
+local-context/
+
+# Local environment
+.env
+
+# Build outputs
+bin/
+dist/
+
+# Go
+*.test
+coverage.out
+
+# Local databases and runtime files
+*.db
+*.sqlite
