@@ -41,6 +41,16 @@ This project intentionally fills the gap between a tutorial prototype and a prod
 - k6 load tests.
 - Redis-backed owner API rate limiting.
 
+## Configuration
+
+| Variable | Default | Description |
+|---|---|---|
+| `REDIRECT_CACHE_ENABLED` | `true` | Enables Redis redirect cache reads and writes. Set to `false` for cache-vs-database benchmarks. |
+| `ANALYTICS_WORKER_ENABLED` | `true` | Enables the Redis Stream consumer that batch-writes scan events to ClickHouse. |
+| `ANALYTICS_BATCH_SIZE` | `500` | Maximum scan events read and inserted per worker batch. |
+| `ANALYTICS_BLOCK_SECONDS` | `2` | Maximum Redis Stream read wait for a partially filled batch. |
+| `ANALYTICS_RECLAIM_IDLE_SECONDS` | `30` | Minimum pending-message idle time before another worker reclaims it. |
+
 ## Current Scope
 
 V1 deliberately excludes custom aliases, full login UI, S3 image storage, and frontend. The product assumption is QR-first: scanners scan QR images; owners manage QR codes through authenticated APIs.

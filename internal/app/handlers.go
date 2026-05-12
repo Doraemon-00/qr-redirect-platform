@@ -134,12 +134,14 @@ func (s *Server) getAnalytics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{
-		"token":       token,
-		"totalScans":  0,
-		"scansByDay":  []any{},
-		"consistency": "analytics pipeline scaffolded; ClickHouse worker pending",
-	})
+	analytics, err := s.getScanAnalytics(r.Context(), token)
+	if err != nil {
+		s.logger.Error("analytics query failed", "error", err)
+		writeError(w, http.StatusInternalServerError, "failed to get analytics")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, analytics)
 }
 
 func (s *Server) getQRImage(w http.ResponseWriter, r *http.Request) {
@@ -198,7 +200,9 @@ func (s *Server) redirect(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, entry.TargetURL, http.StatusFound)
 		return
 	}
-	redirectCacheMissesTotal.Inc()
+	if s.cfg.RedirectCacheEnabled {
+		redirectCacheMissesTotal.Inc()
+	}
 
 	q, err := s.getQRCodeForRedirect(r.Context(), token)
 	if errors.Is(err, errQRNotFound) {

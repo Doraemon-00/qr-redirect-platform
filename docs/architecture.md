@@ -38,6 +38,14 @@ ClickHouse:
 - Daily scan breakdown.
 - Aggregate analytics queries.
 
+Analytics worker:
+
+- Runs in the API process for V1.
+- Consumes `scan_events` from Redis with a consumer group.
+- Batch-writes scan events to ClickHouse.
+- Acknowledges Redis Stream messages only after ClickHouse insert succeeds.
+- Reclaims idle pending messages so a crashed worker does not strand events forever.
+
 ## Redirect Flow
 
 ```text
@@ -52,6 +60,23 @@ GET /r/{token}
 ```
 
 Redis and analytics are performance/observability layers. They should not turn a successful DB lookup into a user-facing failure.
+
+## Analytics Flow
+
+```text
+Redirect succeeds
+1. API enqueues a hashed scan event to Redis Stream.
+2. Worker reads events from Redis consumer group.
+3. Worker inserts a batch into ClickHouse.
+4. Worker acknowledges the Redis Stream IDs after a successful insert.
+5. Owner analytics endpoint queries ClickHouse for total scans and daily counts.
+```
+
+Analytics is eventually consistent. Worker or ClickHouse failures increase lag and emit metrics, but they do not block redirects.
+
+Dashboard/report freshness is intentionally relaxed in V1. The owner analytics endpoint can update within seconds locally, while dashboard-style reports can be hourly or daily because analytics prioritizes throughput and durability over redirect-path latency.
+
+The worker uses at-least-once delivery. Redis Stream IDs are converted into deterministic ClickHouse event IDs, and analytics queries count unique event IDs so retrying a message does not inflate scan totals.
 
 ## Owner Flow
 

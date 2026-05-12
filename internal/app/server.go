@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -18,6 +19,7 @@ type Server struct {
 	logger *slog.Logger
 	db     *pgxpool.Pool
 	redis  *redis.Client
+	ch     clickhouse.Conn
 }
 
 func NewServer(ctx context.Context, cfg Config, logger *slog.Logger) (*Server, func(), error) {
@@ -32,14 +34,31 @@ func NewServer(ctx context.Context, cfg Config, logger *slog.Logger) (*Server, f
 		ReadTimeout: 500 * time.Millisecond,
 	})
 
+	ch, err := clickhouse.Open(&clickhouse.Options{
+		Addr: []string{cfg.ClickHouseAddr},
+		Auth: clickhouse.Auth{
+			Database: cfg.ClickHouseDatabase,
+			Username: "default",
+			Password: cfg.ClickHousePassword,
+		},
+		DialTimeout: 500 * time.Millisecond,
+	})
+	if err != nil {
+		_ = rdb.Close()
+		db.Close()
+		return nil, nil, err
+	}
+
 	s := &Server{
 		cfg:    cfg,
 		logger: logger,
 		db:     db,
 		redis:  rdb,
+		ch:     ch,
 	}
 
 	cleanup := func() {
+		_ = ch.Close()
 		_ = rdb.Close()
 		db.Close()
 	}
@@ -87,6 +106,10 @@ func (s *Server) readyz(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := s.db.Ping(ctx); err != nil {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "not_ready", "postgres": "unavailable"})
+		return
+	}
+	if err := s.ch.Ping(ctx); err != nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "not_ready", "clickhouse": "unavailable"})
 		return
 	}
 

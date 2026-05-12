@@ -28,6 +28,26 @@ type updateQRRequest struct {
 	ExpiresAt *time.Time `json:"expiresAt"`
 }
 
+type scanEvent struct {
+	StreamID      string
+	Token         string
+	ScannedAt     time.Time
+	UserAgentHash string
+	IPHash        string
+}
+
+type dailyScanCount struct {
+	Date  string `json:"date"`
+	Count uint64 `json:"count"`
+}
+
+type scanAnalytics struct {
+	Token       string           `json:"token"`
+	TotalScans  uint64           `json:"totalScans"`
+	ScansByDay  []dailyScanCount `json:"scansByDay"`
+	Consistency string           `json:"consistency"`
+}
+
 type redirectCacheEntry struct {
 	TargetURL string     `json:"targetUrl"`
 	ExpiresAt *time.Time `json:"expiresAt,omitempty"`

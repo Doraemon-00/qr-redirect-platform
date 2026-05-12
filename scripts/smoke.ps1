@@ -32,6 +32,30 @@ function Get-RedirectHeaders {
     }
 }
 
+function Wait-AnalyticsCount {
+    param(
+        [string]$Url,
+        [string]$Key,
+        [string]$Token,
+        [int]$MinimumCount
+    )
+
+    for ($i = 0; $i -lt 20; $i++) {
+        $analytics = Invoke-RestMethod `
+            -Method Get `
+            -Uri "$Url/api/qr/$Token/analytics" `
+            -Headers @{ Authorization = "Bearer $Key" }
+
+        if ($analytics.totalScans -ge $MinimumCount) {
+            return $analytics
+        }
+
+        Start-Sleep -Milliseconds 500
+    }
+
+    throw "analytics did not reach $MinimumCount scans for token $Token"
+}
+
 Write-Host "Checking readiness..."
 $ready = Invoke-RestMethod -Uri "$BaseUrl/readyz"
 Assert-True ($ready.status -eq "ready") "service should be ready"
@@ -95,6 +119,10 @@ Start-Sleep -Milliseconds 300
 $tombstoneTtl = [int](docker exec qrcode-redis-1 redis-cli TTL "redirect:$token")
 Assert-True ($tombstoneTtl -gt 0 -and $tombstoneTtl -le 300) "tombstone cache TTL should be within 5 minutes"
 
+Write-Host "Checking ClickHouse analytics..."
+$analytics = Wait-AnalyticsCount -Url $BaseUrl -Key $ApiKey -Token $token -MinimumCount 3
+Assert-True ($analytics.scansByDay.Count -ge 1) "analytics should include daily scan breakdown"
+
 Write-Host "Checking rate limit headers..."
 $metadataHeaders = curl.exe -s -o NUL -D - -H "Authorization: Bearer $ApiKey" "$BaseUrl/api/qr/$token"
 $metadataHeaderText = $metadataHeaders -join "`n"
@@ -105,3 +133,4 @@ Write-Host "Smoke test passed."
 Write-Host "Token: $token"
 Write-Host "Active TTL observed: $activeTtl seconds"
 Write-Host "Tombstone TTL observed: $tombstoneTtl seconds"
+Write-Host "Analytics scans observed: $($analytics.totalScans)"

@@ -29,6 +29,8 @@ func (s *Server) getQRCodeForOwner(ctx context.Context, ownerID, token string) (
 }
 
 func (s *Server) getQRCodeForRedirect(ctx context.Context, token string) (qrCode, error) {
+	redirectDBLookupsTotal.Inc()
+
 	row := s.db.QueryRow(ctx, `
 		SELECT id::text, owner_id::text, token, target_url, normalized_url, expires_at, deleted_at, created_at, updated_at
 		FROM qr_codes

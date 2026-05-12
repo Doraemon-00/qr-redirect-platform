@@ -31,6 +31,7 @@ Scanner:
 - Missing tokens return `404 Not Found`.
 - URL validation includes format checks, normalization, and malicious/internal URL blocking.
 - Analytics endpoint returns scan count and daily breakdown.
+- Analytics is eventually consistent; reports may lag behind redirects. Hourly or daily dashboard refresh is acceptable for V1.
 
 ## Non-Functional Requirements
 

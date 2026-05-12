@@ -29,6 +29,7 @@ redirect updated target
 delete
 410 Gone
 tombstone Redis TTL
+ClickHouse analytics count and daily breakdown
 rate-limit headers
 ```
 
@@ -57,6 +58,23 @@ docker run --rm -v "${PWD}/load-tests:/scripts" -e BASE_URL=http://host.docker.i
 docker run --rm -v "${PWD}/load-tests:/scripts" -e BASE_URL=http://host.docker.internal:8080 -e TOKEN=<token> -e RATE=100 grafana/k6 run /scripts/redirect.k6.js
 docker run --rm -v "${PWD}/load-tests:/scripts" -e BASE_URL=http://host.docker.internal:8080 grafana/k6 run /scripts/owner-rate-limit.k6.js
 ```
+
+Use the benchmark helper for isolated redirect metric deltas:
+
+```powershell
+powershell.exe -ExecutionPolicy Bypass -File .\scripts\benchmark-redirect.ps1 -CacheEnabled true -Rate 100 -Duration 30s
+powershell.exe -ExecutionPolicy Bypass -File .\scripts\benchmark-redirect.ps1 -CacheEnabled false -Rate 100 -Duration 30s
+```
+
+The helper restarts the API with `REDIRECT_CACHE_ENABLED`, creates a fresh QR code, warms the cache when enabled, runs k6 through Docker, and prints before/after deltas for redirect counters.
+
+Use the analytics helper to measure async worker drain behavior under redirect load:
+
+```powershell
+powershell.exe -ExecutionPolicy Bypass -File .\scripts\benchmark-analytics.ps1 -Rate 500 -Duration 30s -VUs 100 -MaxVUs 500
+```
+
+The helper warms one token, runs redirect load, waits for `analytics_events_written_total` to catch up to the new redirect count, and prints stream/pending/batch metric deltas.
 
 ## Result Format
 

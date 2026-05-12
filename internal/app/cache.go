@@ -16,6 +16,10 @@ func redirectCacheKey(token string) string {
 }
 
 func (s *Server) getRedirectCache(ctx context.Context, token string) (redirectCacheEntry, bool) {
+	if !s.cfg.RedirectCacheEnabled {
+		return redirectCacheEntry{}, false
+	}
+
 	raw, err := s.redis.Get(ctx, redirectCacheKey(token)).Bytes()
 	if err != nil {
 		return redirectCacheEntry{}, false
@@ -29,6 +33,10 @@ func (s *Server) getRedirectCache(ctx context.Context, token string) (redirectCa
 }
 
 func (s *Server) fillRedirectCacheBestEffort(token string, q qrCode) {
+	if !s.cfg.RedirectCacheEnabled {
+		return
+	}
+
 	entry := redirectCacheEntry{
 		TargetURL: q.TargetURL,
 		ExpiresAt: q.ExpiresAt,
@@ -53,6 +61,10 @@ func (s *Server) fillRedirectCacheBestEffort(token string, q qrCode) {
 }
 
 func (s *Server) invalidateRedirectCache(ctx context.Context, token string) {
+	if !s.cfg.RedirectCacheEnabled {
+		return
+	}
+
 	if err := s.redis.Del(ctx, redirectCacheKey(token)).Err(); err != nil {
 		s.logger.Warn("redirect cache invalidation failed", "token", token, "error", err)
 	}
