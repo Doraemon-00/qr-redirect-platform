@@ -6,6 +6,11 @@ import (
 	"time"
 )
 
+const (
+	activeRedirectCacheTTL    = 10 * time.Minute
+	tombstoneRedirectCacheTTL = 5 * time.Minute
+)
+
 func redirectCacheKey(token string) string {
 	return "redirect:" + token
 }
@@ -30,15 +35,9 @@ func (s *Server) fillRedirectCacheBestEffort(token string, q qrCode) {
 		DeletedAt: q.DeletedAt,
 	}
 
-	ttl := 10 * time.Minute
-	if q.ExpiresAt != nil {
-		untilExpiry := time.Until(*q.ExpiresAt)
-		if untilExpiry <= 0 {
-			return
-		}
-		if untilExpiry < ttl {
-			ttl = untilExpiry
-		}
+	ttl := redirectCacheTTL(q, time.Now())
+	if ttl <= 0 {
+		return
 	}
 
 	payload, err := json.Marshal(entry)
@@ -57,4 +56,22 @@ func (s *Server) invalidateRedirectCache(ctx context.Context, token string) {
 	if err := s.redis.Del(ctx, redirectCacheKey(token)).Err(); err != nil {
 		s.logger.Warn("redirect cache invalidation failed", "token", token, "error", err)
 	}
+}
+
+func redirectCacheTTL(q qrCode, now time.Time) time.Duration {
+	if q.DeletedAt != nil {
+		return tombstoneRedirectCacheTTL
+	}
+	if q.ExpiresAt == nil {
+		return activeRedirectCacheTTL
+	}
+
+	untilExpiry := q.ExpiresAt.Sub(now)
+	if untilExpiry <= 0 {
+		return tombstoneRedirectCacheTTL
+	}
+	if untilExpiry < activeRedirectCacheTTL {
+		return untilExpiry
+	}
+	return activeRedirectCacheTTL
 }

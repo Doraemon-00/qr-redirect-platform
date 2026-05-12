@@ -30,6 +30,18 @@ Redis miss -> PostgreSQL lookup -> return response -> best-effort Redis fill
 
 Cache fill failure should not fail the redirect.
 
+## Tombstones
+
+V1 caches active mappings and short-lived tombstones for deleted or expired tokens:
+
+```text
+active mapping: 10 minutes, capped by expires_at
+deleted/expired tombstone: 5 minutes
+arbitrary 404 not-found: not cached in V1
+```
+
+The system does not cache arbitrary 404s by default because a random-token spray attack could pollute Redis with high-cardinality negative keys. Deleted and expired tokens are real known tokens, and old printed QR codes may keep receiving scans, so short tombstone caching protects PostgreSQL without caching unbounded fake tokens.
+
 ## Update/Delete Flow
 
 On update, delete, or expiration-sensitive changes, invalidate the Redis key.

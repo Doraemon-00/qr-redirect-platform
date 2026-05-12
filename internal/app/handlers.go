@@ -208,14 +208,14 @@ func (s *Server) redirect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	go s.fillRedirectCacheBestEffort(token, q)
-
 	if isGone(q.ExpiresAt, q.DeletedAt) {
+		go s.fillRedirectCacheBestEffort(token, q)
 		redirectRequestsTotal.WithLabelValues("gone").Inc()
 		writeError(w, http.StatusGone, "gone")
 		return
 	}
 
+	go s.fillRedirectCacheBestEffort(token, q)
 	s.enqueueScanEventBestEffort(token, r)
 	redirectRequestsTotal.WithLabelValues("redirect").Inc()
 	http.Redirect(w, r, q.TargetURL, http.StatusFound)
