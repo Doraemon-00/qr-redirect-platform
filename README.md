@@ -39,6 +39,7 @@ This project intentionally fills the gap between a tutorial prototype and a prod
 - Docker Compose for local infrastructure.
 - Prometheus metrics.
 - k6 load tests.
+- Redis-backed owner API rate limiting.
 
 ## Current Scope
 

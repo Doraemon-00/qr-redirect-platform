@@ -62,6 +62,7 @@ func (s *Server) Routes() http.Handler {
 
 	r.Route("/api/qr", func(r chi.Router) {
 		r.Use(s.requireAPIKey)
+		r.Use(s.rateLimitOwnerAPI)
 		r.Post("/create", s.createQR)
 		r.Get("/{token}", s.getQR)
 		r.Patch("/{token}", s.updateQR)

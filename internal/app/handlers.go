@@ -19,6 +19,7 @@ import (
 )
 
 func (s *Server) createQR(w http.ResponseWriter, r *http.Request) {
+	ownerID := ownerIDFromContext(r.Context())
 	var req createQRRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid json body")
@@ -39,7 +40,7 @@ func (s *Server) createQR(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		q, err = s.insertQRCode(r.Context(), demoOwnerID, generated, normalized, req.ExpiresAt)
+		q, err = s.insertQRCode(r.Context(), ownerID, generated, normalized, req.ExpiresAt)
 		if err == nil {
 			writeJSON(w, http.StatusCreated, q.withURLs(s.cfg.PublicBaseURL))
 			return
@@ -55,7 +56,8 @@ func (s *Server) createQR(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) getQR(w http.ResponseWriter, r *http.Request) {
-	q, err := s.getQRCodeForOwner(r.Context(), demoOwnerID, chi.URLParam(r, "token"))
+	ownerID := ownerIDFromContext(r.Context())
+	q, err := s.getQRCodeForOwner(r.Context(), ownerID, chi.URLParam(r, "token"))
 	if errors.Is(err, errQRNotFound) {
 		writeError(w, http.StatusNotFound, "qr code not found")
 		return
@@ -69,6 +71,7 @@ func (s *Server) getQR(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) updateQR(w http.ResponseWriter, r *http.Request) {
+	ownerID := ownerIDFromContext(r.Context())
 	var req updateQRRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid json body")
@@ -86,7 +89,7 @@ func (s *Server) updateQR(w http.ResponseWriter, r *http.Request) {
 	}
 
 	token := chi.URLParam(r, "token")
-	q, err := s.updateQRCode(r.Context(), demoOwnerID, token, normalized, req.ExpiresAt)
+	q, err := s.updateQRCode(r.Context(), ownerID, token, normalized, req.ExpiresAt)
 	if errors.Is(err, errQRNotFound) {
 		writeError(w, http.StatusNotFound, "qr code not found")
 		return
@@ -102,8 +105,9 @@ func (s *Server) updateQR(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) deleteQR(w http.ResponseWriter, r *http.Request) {
+	ownerID := ownerIDFromContext(r.Context())
 	token := chi.URLParam(r, "token")
-	err := s.softDeleteQRCode(r.Context(), demoOwnerID, token)
+	err := s.softDeleteQRCode(r.Context(), ownerID, token)
 	if errors.Is(err, errQRNotFound) {
 		writeError(w, http.StatusNotFound, "qr code not found")
 		return
@@ -119,8 +123,9 @@ func (s *Server) deleteQR(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) getAnalytics(w http.ResponseWriter, r *http.Request) {
+	ownerID := ownerIDFromContext(r.Context())
 	token := chi.URLParam(r, "token")
-	if _, err := s.getQRCodeForOwner(r.Context(), demoOwnerID, token); errors.Is(err, errQRNotFound) {
+	if _, err := s.getQRCodeForOwner(r.Context(), ownerID, token); errors.Is(err, errQRNotFound) {
 		writeError(w, http.StatusNotFound, "qr code not found")
 		return
 	} else if err != nil {

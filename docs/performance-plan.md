@@ -23,6 +23,8 @@ k6 run -e BASE_URL=http://localhost:8080 -e TOKEN=<token> load-tests/redirect.k6
 - `redirect_cache_hits_total`
 - `redirect_cache_misses_total`
 - `analytics_enqueue_failures_total`
+- `owner_rate_limited_total`
+- `owner_rate_limit_failures_total`
 
 ## Experiments
 

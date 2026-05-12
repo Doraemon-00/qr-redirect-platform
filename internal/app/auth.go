@@ -1,10 +1,15 @@
 package app
 
 import (
+	"context"
 	"crypto/subtle"
 	"net/http"
 	"strings"
 )
+
+type contextKey string
+
+const ownerIDContextKey contextKey = "owner_id"
 
 func (s *Server) requireAPIKey(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -20,6 +25,12 @@ func (s *Server) requireAPIKey(next http.Handler) http.Handler {
 			return
 		}
 
-		next.ServeHTTP(w, r)
+		ctx := context.WithValue(r.Context(), ownerIDContextKey, demoOwnerID)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+func ownerIDFromContext(ctx context.Context) string {
+	ownerID, _ := ctx.Value(ownerIDContextKey).(string)
+	return ownerID
 }

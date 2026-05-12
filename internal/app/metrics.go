@@ -28,6 +28,18 @@ var (
 			Help: "Total scan analytics enqueue failures.",
 		},
 	)
+	ownerRateLimitedTotal = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Name: "owner_rate_limited_total",
+			Help: "Total owner API requests rejected by rate limiting.",
+		},
+	)
+	ownerRateLimitFailuresTotal = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Name: "owner_rate_limit_failures_total",
+			Help: "Total owner API rate limiter backend failures.",
+		},
+	)
 	redirectLatencySeconds = prometheus.NewHistogram(
 		prometheus.HistogramOpts{
 			Name:    "redirect_latency_seconds",
@@ -43,6 +55,8 @@ func init() {
 		redirectCacheHitsTotal,
 		redirectCacheMissesTotal,
 		analyticsEnqueueFailuresTotal,
+		ownerRateLimitedTotal,
+		ownerRateLimitFailuresTotal,
 		redirectLatencySeconds,
 	)
 }

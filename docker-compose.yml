@@ -11,6 +11,7 @@ services:
       CLICKHOUSE_DATABASE: qr_analytics
       CLICKHOUSE_PASSWORD: qr
       DEMO_API_KEY: qk_demo_local_dev_key
+      OWNER_RATE_LIMIT_PER_MINUTE: 60
     ports:
       - "8080:8080"
     depends_on:

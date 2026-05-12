@@ -1,6 +1,7 @@
 package app
 
 import "os"
+import "strconv"
 
 type Config struct {
 	AppEnv             string
@@ -11,6 +12,7 @@ type Config struct {
 	ClickHouseAddr     string
 	ClickHouseDatabase string
 	DemoAPIKey         string
+	OwnerRateLimit     int
 }
 
 func LoadConfig() Config {
@@ -23,6 +25,7 @@ func LoadConfig() Config {
 		ClickHouseAddr:     env("CLICKHOUSE_ADDR", "localhost:9000"),
 		ClickHouseDatabase: env("CLICKHOUSE_DATABASE", "qr_analytics"),
 		DemoAPIKey:         env("DEMO_API_KEY", "qk_demo_local_dev_key"),
+		OwnerRateLimit:     intEnv("OWNER_RATE_LIMIT_PER_MINUTE", 60),
 	}
 }
 
@@ -32,4 +35,16 @@ func env(key, fallback string) string {
 		return fallback
 	}
 	return value
+}
+
+func intEnv(key string, fallback int) int {
+	value := os.Getenv(key)
+	if value == "" {
+		return fallback
+	}
+	parsed, err := strconv.Atoi(value)
+	if err != nil || parsed <= 0 {
+		return fallback
+	}
+	return parsed
 }
