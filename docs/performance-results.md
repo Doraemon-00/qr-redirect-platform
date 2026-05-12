@@ -2,6 +2,95 @@
 
 This file records local benchmark runs. Results are not cloud capacity claims; they are evidence that the benchmark harness, metrics, and cache behavior are working.
 
+## 2026-05-12: 1,000 RPS Analytics Worker Benchmark
+
+Environment:
+
+```text
+Machine: local Windows development machine
+Docker memory limit visible to containers: 15.46 GiB
+API: Go service in Docker
+PostgreSQL: postgres:17-alpine
+Redis: redis:7-alpine
+ClickHouse: clickhouse/clickhouse-server:24.12-alpine
+Load generator: grafana/k6 Docker image
+```
+
+Command:
+
+```powershell
+powershell.exe -ExecutionPolicy Bypass -File .\scripts\benchmark-analytics.ps1 -Rate 1000 -Duration 30s -VUs 200 -MaxVUs 1000 -DrainTimeoutSeconds 120
+```
+
+Scenario:
+
+```text
+Fresh token.
+Cache enabled and warmed once before the measured run.
+Redirect endpoint enqueues one analytics event per successful 302.
+Worker writes Redis Stream events to ClickHouse in batches of up to 500.
+Target rate: 1,000 redirect requests/sec for 30 sec.
+Total measured requests: 30,001.
+```
+
+k6 result:
+
+| Metric | Value |
+|---|---:|
+| Request rate | `999.98 req/s` |
+| Failed requests | `0.00%` |
+| Average latency | `1.46 ms` |
+| Median latency | `1.33 ms` |
+| p90 latency | `1.81 ms` |
+| p95 latency | `2.04 ms` |
+| Max latency | `48.51 ms` |
+
+Prometheus counter and gauge deltas:
+
+| Metric | Delta |
+|---|---:|
+| `redirect_requests_total{result="redirect"}` | `30001` |
+| `redirect_cache_hits_total` | `30001` |
+| `redirect_db_lookups_total` | `0` |
+| `analytics_enqueue_failures_total` | `0` |
+| `analytics_events_written_total` | `30001` |
+| `analytics_batches_written_total` | `61` |
+| `analytics_events_reclaimed_total` | `0` |
+| `analytics_worker_failures_total` | `0` |
+| `analytics_events_pending` | `0` |
+| `analytics_stream_length` | `934` |
+| `analytics_batch_write_duration_seconds_count` | `61` |
+
+Drain result:
+
+```text
+WrittenDelta = 30001
+Pending = 0
+Failures = 0
+```
+
+Container stats after run:
+
+| Container | CPU | Memory |
+|---|---:|---:|
+| `qrcode-api-1` | `0.06%` | `18.97 MiB` |
+| `qrcode-redis-1` | `0.37%` | `31.18 MiB` |
+| `qrcode-postgres-1` | `0.00%` | `35.93 MiB` |
+| `qrcode-clickhouse-1` | `3.09%` | `1.263 GiB` |
+
+Redis stream length after run:
+
+```text
+scan_events XLEN = 100000
+```
+
+Interpretation:
+
+- The warm-cache redirect path stayed well below the `p95 < 100ms` target while enqueueing analytics at 1,000 RPS.
+- The analytics worker drained all 30,001 new events into ClickHouse with no pending backlog or worker failures.
+- ClickHouse writes were batched into 61 batches, consistent with the 500-event batch size plus a final partial batch.
+- `analytics_stream_length` delta is small because the Redis Stream reached its approximate 100,000-entry retention cap during this run. Redis Stream length is useful as a transport-buffer gauge, not as total historical event count.
+
 ## 2026-05-12: Analytics Worker Recovery Benchmark
 
 Environment:
