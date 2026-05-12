@@ -50,6 +50,7 @@ V1 deliberately excludes custom aliases, full login UI, S3 image storage, and fr
 - [Product Requirements](docs/product-requirements.md)
 - [Architecture](docs/architecture.md)
 - [Performance Plan](docs/performance-plan.md)
+- [Testing](docs/testing.md)
 - [Decision Records](docs/decision-records)
 
 ## Local Run

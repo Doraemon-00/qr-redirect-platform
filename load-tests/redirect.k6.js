@@ -3,10 +3,13 @@ import { check } from "k6";
 
 export const options = {
   scenarios: {
-    redirect_smoke: {
-      executor: "constant-vus",
-      vus: 10,
-      duration: "30s",
+    warm_redirect: {
+      executor: "constant-arrival-rate",
+      rate: Number(__ENV.RATE || 100),
+      timeUnit: "1s",
+      duration: __ENV.DURATION || "30s",
+      preAllocatedVUs: Number(__ENV.VUS || 50),
+      maxVUs: Number(__ENV.MAX_VUS || 200),
     },
   },
   thresholds: {
@@ -16,11 +19,16 @@ export const options = {
 };
 
 const baseUrl = __ENV.BASE_URL || "http://localhost:8080";
-const token = __ENV.TOKEN || "replace-with-token";
+const token = __ENV.TOKEN;
+
+if (!token) {
+  throw new Error("TOKEN env var is required");
+}
 
 export default function () {
   const res = http.get(`${baseUrl}/r/${token}`, { redirects: 0 });
   check(res, {
-    "redirect or known placeholder": (r) => r.status === 302 || r.status === 501,
+    "redirects with 302": (r) => r.status === 302,
+    "has Location header": (r) => Boolean(r.headers.Location),
   });
 }
