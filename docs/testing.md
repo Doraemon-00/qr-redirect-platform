@@ -76,6 +76,14 @@ powershell.exe -ExecutionPolicy Bypass -File .\scripts\benchmark-analytics.ps1 -
 
 The helper warms one token, runs redirect load, waits for `analytics_events_written_total` to catch up to the new redirect count, and prints stream/pending/batch metric deltas.
 
+Use the recovery helper to verify analytics outage/backlog behavior:
+
+```powershell
+powershell.exe -ExecutionPolicy Bypass -File .\scripts\benchmark-analytics-recovery.ps1 -Rate 500 -Duration 30s -VUs 100 -MaxVUs 500 -AnalyticsBatchSize 500 -AnalyticsBlockSeconds 2
+```
+
+The helper first runs redirect load with `ANALYTICS_WORKER_ENABLED=false`, verifies no ClickHouse writes happen while the worker is disabled, then restarts the worker and waits for the queued events to drain.
+
 ## Result Format
 
 Record benchmark results in `docs/performance-results.md` with:

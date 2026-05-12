@@ -2,6 +2,78 @@
 
 This file records local benchmark runs. Results are not cloud capacity claims; they are evidence that the benchmark harness, metrics, and cache behavior are working.
 
+## 2026-05-12: Analytics Worker Recovery Benchmark
+
+Environment:
+
+```text
+Machine: local Windows development machine
+Docker memory limit visible to containers: 15.46 GiB
+API: Go service in Docker
+PostgreSQL: postgres:17-alpine
+Redis: redis:7-alpine
+ClickHouse: clickhouse/clickhouse-server:24.12-alpine
+Load generator: grafana/k6 Docker image
+```
+
+Commands:
+
+```powershell
+powershell.exe -ExecutionPolicy Bypass -File .\scripts\benchmark-analytics-recovery.ps1 -Rate 500 -Duration 30s -VUs 100 -MaxVUs 500 -AnalyticsBatchSize 500 -AnalyticsBlockSeconds 2 -DrainTimeoutSeconds 240
+powershell.exe -ExecutionPolicy Bypass -File .\scripts\benchmark-analytics-recovery.ps1 -Rate 10 -Duration 2s -VUs 10 -MaxVUs 50 -AnalyticsBatchSize 500 -AnalyticsBlockSeconds 2 -DrainTimeoutSeconds 60
+```
+
+Scenario:
+
+```text
+Start API with ANALYTICS_WORKER_ENABLED=false.
+Create fresh token and warm redirect cache.
+Run redirect load while worker is disabled.
+Verify ClickHouse write counters do not increase while disabled.
+Restart API with worker enabled.
+Wait for queued Redis Stream events to drain into ClickHouse.
+```
+
+500 RPS outage/backlog result:
+
+| Metric | Value |
+|---|---:|
+| Request rate | `500.01 req/s` |
+| Failed requests | `0.00%` |
+| p95 redirect latency while worker disabled | `2.09 ms` |
+| Redis stream length before load | `84039` |
+| Redis stream length after load | `99040` |
+| ClickHouse writes while worker disabled | `0` |
+| Events written after worker restart | `15002` |
+| Expected minimum batches | `31` |
+| Actual batches | `31` |
+| Pending after drain | `0` |
+| Worker failures | `0` |
+
+Low-traffic partial-batch result:
+
+| Metric | Value |
+|---|---:|
+| Request rate | `10.48 req/s` |
+| Failed requests | `0.00%` |
+| p95 redirect latency while worker disabled | `2.88 ms` |
+| Redis stream length before load | `99041` |
+| Redis stream length after load | `99062` |
+| ClickHouse writes while worker disabled | `0` |
+| Events written after worker restart | `22` |
+| Expected minimum batches | `1` |
+| Actual batches | `1` |
+| Pending after drain | `0` |
+| Worker failures | `0` |
+
+Interpretation:
+
+- Redirects continue to succeed when the analytics worker is disabled.
+- Events accumulate in Redis Stream while the worker is unavailable.
+- After restart, the worker drains the backlog into ClickHouse with no pending messages or worker failures.
+- The configured batch size is respected under backlog load: roughly 500 events per ClickHouse batch.
+- Partial batches flush correctly when traffic is low, so low-volume reports do not wait for a full batch.
+
 ## 2026-05-12: 500 RPS Cache vs No-Cache Redirect Benchmark
 
 Environment:
